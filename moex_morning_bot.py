@@ -1,15 +1,15 @@
-print("Bot is starting...")  # Проверка, выводим сообщение, что бот начал запуск
-import time
-time.sleep(5)  # Задержка в 5 секунд, чтобы мы могли увидеть сообщение в логах
 import requests
-import time
+import os
+from dotenv import load_dotenv
 
-TOKEN = "8386523259:AAGs9w25ARfz0TazuC42kRSjnkR1R8CKA_U"
-CHAT_ID = 173362390
+load_dotenv()  # Загружаем переменные из .env файла
+
+TOKEN = os.getenv('TELEGRAM_TOKEN')  # Токен берем из .env
+CHAT_ID = 173362390  # ID чата
 
 URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
 def send(msg):
     requests.post(URL, data={"chat_id": CHAT_ID, "text": msg})
 
-send("🚀 Бот запущен")
+send("🚀 Бот запущен")  # Отправляем сообщение о запуске бота
