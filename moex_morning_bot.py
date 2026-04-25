@@ -4,11 +4,12 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, time as dt_time
 from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = 173362390
+CHAT_ID = "173362390"
 URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
 STOCKS = {
@@ -100,24 +101,20 @@ def check_signal(ticker):
     return deviation, base_price, current_price
 
 def is_weekend():
-    """Проверяет, выходной ли сегодня (суббота или воскресенье)"""
     return datetime.now().weekday() >= 5
 
 def morning_monitor():
-    send("📊 Бот запущен. Работает по БУДНЯМ с 7:00 до 9:00 МСК")
-    send("📅 Суббота и воскресенье — бот полностью спит (0 часов работы)")
+    send("📊 MOEX бот запущен. Работает по БУДНЯМ с 7:00 до 9:00 МСК")
+    send("📅 Суббота и воскресенье — бот спит")
     send("🛡️ Защита от проколов: 5 секунд")
     send("⏰ Повторный сигнал по акции: не чаще 1 раза в 15 минут")
     
     while True:
-        # Проверяем, выходной ли сегодня
         if is_weekend():
-            # Выходной — спим 24 часа, потом проверим день недели снова
             print("Выходной день, бот спит до понедельника...")
-            time.sleep(86400)  # 24 часа
+            time.sleep(86400)
             continue
         
-        # Будний день — работаем по расписанию
         now_time = datetime.now().time()
         current_ts = time.time()
         
@@ -145,8 +142,7 @@ def morning_monitor():
 💰 Базовая цена: {base_price:.2f}
 💵 Текущая цена: {current_price:.2f}
 ✅ Подтверждение 5 секунд
-⏰ Следующий сигнал: через 15 минут
-"""
+⏰ Следующий сигнал: через 15 минут"""
                             send(msg)
                             last_alert_time[ticker] = current_ts
                             del first_hit_time[ticker]
@@ -156,20 +152,31 @@ def morning_monitor():
             
             time.sleep(5)
         else:
-            # Вне рабочего времени (до 7:00 или после 9:00)
             first_hit_time.clear()
             time.sleep(60)
 
-def http_server():
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"Bot is running")
-    server = HTTPServer(('0.0.0.0', 8080), Handler)
+# === ВЕБ-СЕРВЕР ДЛЯ RENDER И HEALTHCHECK ДЛЯ БУДИЛЬНИКА ===
+def run_web_server():
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), Handler)
     server.serve_forever()
 
-thread = Thread(target=http_server, daemon=True)
-thread.start()
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+            return
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running")
+    
+    def log_message(self, format, *args):
+        pass
+
+# Запускаем веб-сервер в фоновом потоке
+Thread(target=run_web_server, daemon=True).start()
+
+# Запускаем мониторинг
 morning_monitor()
