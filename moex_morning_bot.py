@@ -125,7 +125,7 @@ def morning_monitor():
             for ticker, name in STOCKS.items():
                 deviation, base_price, current_price = check_signal(ticker)
                 
-                if deviation is not None and deviation >= 0.8:
+                if deviation is not None and deviation >= 0.7:
                     last_time = last_alert_time.get(ticker, 0)
                     minutes_since_last = (current_ts - last_time) / 60 if last_time > 0 else 999
                     
