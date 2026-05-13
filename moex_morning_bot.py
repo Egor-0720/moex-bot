@@ -1,9 +1,9 @@
 import time
+import threading
 import requests
 import os
 from dotenv import load_dotenv
 from datetime import datetime, time as dt_time
-from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 load_dotenv()
@@ -147,12 +147,39 @@ def check_signals():
 def is_weekend():
     return datetime.now().weekday() >= 5
 
-def morning_monitor():
-    send("📊 MOEX бот запущен. Работает по БУДНЯМ с 7:00 до 9:00 МСК")
+# --- ВЕБ-СЕРВЕР ---
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass
+
+def run_web_server():
+    port = int(os.environ.get('PORT', 8080))
+    server = HTTPServer(('0.0.0.0', port), Handler)
+    print(f"Веб-сервер на порту {port}")
+    server.serve_forever()
+
+# --- ГЛАВНЫЙ БЛОК ЗАПУСКА ---
+if __name__ == "__main__":
+    # 1. Сначала создаём поток с веб-сервером
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    
+    # 2. Запускаем его
+    web_thread.start()
+    
+    # 3. Ждём, пока сервер точно поднимется
+    time.sleep(2)
+    
+    # 4. Только потом идёт логика бота
+    print("Бот запущен")
+    send("Бот запущен")
     
     while True:
         if is_weekend():
-            print("Выходной день, бот спит...")
+            print("Выходной")
             time.sleep(3600)
             continue
 
@@ -166,21 +193,3 @@ def morning_monitor():
         else:
             first_hit_time.clear()
             time.sleep(60)
-
-# --- МИНИМАЛЬНЫЙ ВЕБ-СЕРВЕР ДЛЯ AMVERA ---
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
-    def log_message(self, format, *args):
-        pass
-
-def run_web_server():
-    port = int(os.environ.get('PORT', 8080))
-    server = HTTPServer(('0.0.0.0', port), Handler)
-    server.serve_forever()
-
-Thread(target=run_web_server, daemon=True).start()
-
-morning_monitor()
