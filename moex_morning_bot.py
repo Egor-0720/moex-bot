@@ -147,7 +147,7 @@ def check_signals():
 def is_weekend():
     return datetime.now().weekday() >= 5
 
-# --- ВЕБ-СЕРВЕР ---
+# --- ВЕБ-СЕРВЕР (ЗАПУСКАЕТСЯ СРАЗУ) ---
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -162,34 +162,28 @@ def run_web_server():
     print(f"Веб-сервер на порту {port}")
     server.serve_forever()
 
-# --- ГЛАВНЫЙ БЛОК ЗАПУСКА ---
-if __name__ == "__main__":
-    # 1. Сначала создаём поток с веб-сервером
-    web_thread = threading.Thread(target=run_web_server, daemon=True)
-    
-    # 2. Запускаем его
-    web_thread.start()
-    
-    # 3. Ждём, пока сервер точно поднимется
-    time.sleep(2)
-    
-    # 4. Только потом идёт логика бота
-    print("Бот запущен")
-    send("Бот запущен")
-    
-    while True:
-        if is_weekend():
-            print("Выходной")
-            time.sleep(3600)
-            continue
+# Запускаем веб-сервер в фоновом потоке ДО всего остального
+web_thread = threading.Thread(target=run_web_server, daemon=True)
+web_thread.start()
+time.sleep(1)  # Даём серверу секунду на запуск
 
-        now_time = datetime.now().time()
-        start_time = dt_time(7, 0)
-        end_time = dt_time(9, 0)
+# --- ЗАПУСК БОТА ---
+print("Бот запущен")
+send("Бот запущен")
 
-        if start_time <= now_time <= end_time:
-            check_signals()
-            time.sleep(5)
-        else:
-            first_hit_time.clear()
-            time.sleep(60)
+while True:
+    if is_weekend():
+        print("Выходной")
+        time.sleep(3600)
+        continue
+
+    now_time = datetime.now().time()
+    start_time = dt_time(7, 0)
+    end_time = dt_time(9, 0)
+
+    if start_time <= now_time <= end_time:
+        check_signals()
+        time.sleep(5)
+    else:
+        first_hit_time.clear()
+        time.sleep(60)
